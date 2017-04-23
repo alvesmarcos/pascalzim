@@ -43,9 +43,9 @@ pub enum Token {
   Mult,
   Div,
   // literal
-  Int(i32),
-  Float(f32),
-  Str(String)
+  LitInt(i32),
+  LitReal(f32),
+  LitStr(String)
 }
 
 impl fmt::Display for Token {
@@ -86,9 +86,9 @@ impl fmt::Display for Token {
       Token::Sub => "-",
       Token::Mult => "*",
       Token::Div => "/",
-      Token::Int(i) => "2",
-      Token::Float(f) => "2",
-      Token::Str(ref s) => "s.to_string()"
+      Token::LitInt(i) => "2",
+      Token::LitReal(f) => "2",
+      Token::LitStr(ref s) => "s.to_string()"
     };
     write!(f, "{}", result)
   }

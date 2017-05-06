@@ -29,16 +29,16 @@ impl Scanner {
     for line in reader.lines() {
       let mut iter = line.as_ref().unwrap().chars().peekable();
       flag_next = true;
-      
+
       while flag_next {
         if let Some(c) = iter.next() {
           if c == ' ' { continue; }
           
           let (token, category) = match c {
             '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
+            ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
             _ => unimplemented!()
           };
-          println!("{}", token);
           self.deque_token.push_back(Symbol{ token: token, category: category, line: count });
           flag_next = true;
         } else {
@@ -79,11 +79,30 @@ impl Scanner {
     }
   }
 
+  fn delimiters(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
+    match c {
+      ';' => (Token::Semicolon, Type::Delimiter),
+      '.' => (Token::Colon, Type::Delimiter),
+      '(' => (Token::LParentheses, Type::Delimiter),
+      ')' => (Token::RParentheses, Type::Delimiter),
+      ',' => (Token::Comma, Type::Delimiter),
+      ':' => {
+        if iter.peek().unwrap() == &'=' {
+          iter.next();
+          (Token::Assign, Type::Command)
+        } else {
+          (Token::Period, Type::Delimiter) 
+        }
+      },
+      _ => unimplemented!()
+    }
+  }
+
   pub fn next_token(&mut self) -> Symbol {
     return self.deque_token.pop_front().unwrap();
   }
 
-  fn error(&self, s: String, abort: bool) {
+  fn error(&self, s: &'static str, abort: bool) {
     println!("Erro lexico");
 
     if abort { process::exit(0); }
@@ -91,11 +110,32 @@ impl Scanner {
 }
 
 #[test]
-fn test_token_operator1() {
+fn test_token_operator() {
   let mut s: Scanner = Scanner::new();
   s.build_token("files/program1.txt");
-  assert_eq!(s.next_token().token, Token::GreaterThanOrEqual);
-  assert_eq!(s.next_token().token, Token::Mult);
+ 
   assert_eq!(s.next_token().token, Token::Add);
+  assert_eq!(s.next_token().token, Token::Sub);
+  assert_eq!(s.next_token().token, Token::Mult);
   assert_eq!(s.next_token().token, Token::Div);
+  assert_eq!(s.next_token().token, Token::Equal);
+  assert_eq!(s.next_token().token, Token::LessThan);
+  assert_eq!(s.next_token().token, Token::GreaterThan);
+  assert_eq!(s.next_token().token, Token::LessThanOrEqual);
+  assert_eq!(s.next_token().token, Token::GreaterThanOrEqual);
+  assert_eq!(s.next_token().token, Token::NotEqual);
+}
+
+#[test]
+fn test_token_delimiter() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program2.txt");
+
+  assert_eq!(s.next_token().token, Token::Semicolon);
+  assert_eq!(s.next_token().token, Token::Colon);
+  assert_eq!(s.next_token().token, Token::Period);
+  assert_eq!(s.next_token().token, Token::LParentheses);
+  assert_eq!(s.next_token().token, Token::RParentheses);
+  assert_eq!(s.next_token().token, Token::Comma);
+  assert_eq!(s.next_token().token, Token::Assign);
 }

@@ -69,7 +69,7 @@ impl fmt::Display for Token {
       Token::Colon => ".".to_string(),
       Token::LParentheses => "(".to_string(),
       Token::RParentheses => ")".to_string(),
-      Token::Comma => ".to_string(),".to_string(),
+      Token::Comma => ",".to_string(),
       Token::Assign => ":=".to_string(),
       Token::Equal => "=".to_string(),
       Token::NotEqual => "<>".to_string(),

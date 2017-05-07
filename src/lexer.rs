@@ -23,23 +23,35 @@ impl Scanner {
   pub fn build_token(&mut self, p: &str) {
     let mut reader = BufReader::new(File::open(p).expect("Open failed!"));
     let mut count = 1;
+    let mut block_comment = false;
 
     for line in reader.lines() {
       let mut iter = line.as_ref().unwrap().chars().peekable();
 
       loop {
         if let Some(c) = iter.next() {
-          if c == ' ' { continue; }        
-          let (token, category) = match c {
-            '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
-            ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
-            _ => self.literal(c, &mut iter)
-          };
-          self.deque_token.push_back(Symbol{ token: token, category: category, line: count });
+          if c == ' ' { 
+            while iter.peek() == Some(&' ') { iter.next(); }
+          } else if c == '{' || block_comment {
+            while iter.peek() != Some(&'}') { iter.next(); }
+            if iter.next() == Some('}') {
+              block_comment = false;
+            } else {
+              block_comment = true;
+            }
+          } else {
+            let (token, category) = match c {
+              '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
+              ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
+              _ => self.literal(c, &mut iter)
+            };
+            self.deque_token.push_back(Symbol{ token: token, category: category, line: count });
+          }
         } else {
           break;
         }
       }
+      if block_comment { panic!("Error: Unterminated comment"); }
       count += 1;
     }
   }
@@ -99,7 +111,7 @@ impl Scanner {
     } else if c.is_alphabetic() {
       self.literal_str(c, iter)
     } else {
-      panic!("Unexpected Symbol!")
+      panic!("Error: Unexpected Symbol!")
     }
   }
 
@@ -150,7 +162,7 @@ impl Scanner {
   }
 
   pub fn next_symbol(&mut self) -> Symbol {
-    self.deque_token.pop_front().expect("Deque token is empty!")
+    self.deque_token.pop_front().expect("Error: Deque token is empty!")
   }
 
   fn is_digit(&self, iter:&mut Peekable<Chars>) -> bool {

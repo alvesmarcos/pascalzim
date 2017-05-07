@@ -1,0 +1,5 @@
+qualquer coisa aqui pega 
+{ menos isso daqui
+tudinho ate o fim 
+comentarios em pascal }
+literal string 

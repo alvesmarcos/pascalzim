@@ -33,12 +33,9 @@ impl Scanner {
           if c == ' ' { 
             while iter.peek() == Some(&' ') { iter.next(); }
           } else if c == '{' || block_comment {
-            while iter.peek() != Some(&'}') { iter.next(); }
-            if iter.next() == Some('}') {
-              block_comment = false;
-            } else {
-              block_comment = true;
-            }
+            block_comment = true;
+            while iter.peek() != Some(&'}') && iter.peek() != None { iter.next(); }
+            if iter.next() == Some('}') || c == '}' { block_comment = false; }
           } else {
             let (token, category) = match c {
               '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
@@ -51,9 +48,9 @@ impl Scanner {
           break;
         }
       }
-      if block_comment { panic!("Error: Unterminated comment"); }
       count += 1;
     }
+    if block_comment { panic!("Error: Unterminated comment"); }
   }
 
   fn operators(&self, c: char, iter:&mut Peekable<Chars>) -> (Token, Type) {
@@ -111,7 +108,7 @@ impl Scanner {
     } else if c.is_alphabetic() {
       self.literal_str(c, iter)
     } else {
-      panic!("Error: Unexpected Symbol!")
+      panic!("Error: Unexpected Symbol => {}", c)
     }
   }
 
@@ -224,6 +221,19 @@ fn test_token_literal_num() {
   assert_eq!(s.next_symbol().token, Token::LitReal(932.2));
   assert_eq!(s.next_symbol().token, Token::LitInt(1));
   assert_eq!(s.next_symbol().token, Token::LitReal(1.0));
+}
+
+#[test]
+fn test_token_literal_str() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program5.txt");
+ 
+  assert_eq!(s.next_symbol().token, Token::LitStr("qualquer".to_string()));
+  assert_eq!(s.next_symbol().token, Token::LitStr("coisa".to_string()));
+  assert_eq!(s.next_symbol().token, Token::LitStr("aqui".to_string()));
+  assert_eq!(s.next_symbol().token, Token::LitStr("pega".to_string()));
+  assert_eq!(s.next_symbol().token, Token::LitStr("literal".to_string())); 
+  assert_eq!(s.next_symbol().token, Token::LitStr("string".to_string()));   
 }
 
 #[test]

@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::process;
 use std::iter::Peekable;
 use std::str::Chars;
 use spec::Type;
@@ -24,25 +23,21 @@ impl Scanner {
   pub fn build_token(&mut self, p: &str) {
     let mut reader = BufReader::new(File::open(p).expect("Open failed!"));
     let mut count = 1;
-    let mut flag_next;
 
     for line in reader.lines() {
       let mut iter = line.as_ref().unwrap().chars().peekable();
-      flag_next = true;
 
-      while flag_next {
+      loop {
         if let Some(c) = iter.next() {
-          if c == ' ' { continue; }
-          
+          if c == ' ' { continue; }        
           let (token, category) = match c {
             '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
             ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
-            _ => unimplemented!()
+            _ => self.literal_num(c, &mut iter)
           };
           self.deque_token.push_back(Symbol{ token: token, category: category, line: count });
-          flag_next = true;
         } else {
-          flag_next = false;
+          break;
         }
       }
       count += 1;
@@ -57,10 +52,10 @@ impl Scanner {
       '*' => (Token::Mult, Type::MulOperator),
       '=' => (Token::Equal, Type::RelOperator),
       '<' => {
-        if iter.peek().unwrap() == &'=' {
+        if iter.peek() == Some(&'=') {
           iter.next();
           (Token::LessThanOrEqual, Type::RelOperator)
-        } else if iter.peek().unwrap() == &'>' {
+        } else if iter.peek() == Some(&'>') {
           iter.next();
           (Token::NotEqual, Type::RelOperator)
         } else {
@@ -68,7 +63,7 @@ impl Scanner {
         }
       },
       '>' => {
-        if iter.peek().unwrap() == &'=' {
+        if iter.peek() == Some(&'=') {
           iter.next();
           (Token::GreaterThanOrEqual, Type::RelOperator)
         } else {
@@ -87,7 +82,7 @@ impl Scanner {
       ')' => (Token::RParentheses, Type::Delimiter),
       ',' => (Token::Comma, Type::Delimiter),
       ':' => {
-        if iter.peek().unwrap() == &'=' {
+        if iter.peek() == Some(&'=') {
           iter.next();
           (Token::Assign, Type::Command)
         } else {
@@ -98,14 +93,35 @@ impl Scanner {
     }
   }
 
-  pub fn next_token(&mut self) -> Symbol {
-    return self.deque_token.pop_front().unwrap();
+  fn literal_num(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
+    let mut num = c.to_string();
+
+    while self.is_digit(iter) {
+      num.push(iter.next().unwrap());
+    }
+    
+    if iter.peek() == Some(&'.') {
+      num.push(iter.next().unwrap());
+      
+      while self.is_digit(iter) {
+        num.push(iter.next().unwrap());
+      } 
+      (Token::LitReal(num.parse().unwrap()), Type::RealLiteral)
+    } else {
+      println!("{}", num);
+      (Token::LitInt(num.parse().unwrap()), Type::IntLiteral)
+    }
   }
 
-  fn error(&self, s: &'static str, abort: bool) {
-    println!("Erro lexico");
+  pub fn next_symbol(&mut self) -> Symbol {
+    return self.deque_token.pop_front().expect("Deque token is empty!");
+  }
 
-    if abort { process::exit(0); }
+  fn is_digit(&self, iter:&mut Peekable<Chars>) -> bool {
+    match iter.peek() {
+      Some(c) => c.is_digit(10),
+      _ => false
+    }
   }
 }
 
@@ -114,16 +130,16 @@ fn test_token_operator() {
   let mut s: Scanner = Scanner::new();
   s.build_token("files/program1.txt");
  
-  assert_eq!(s.next_token().token, Token::Add);
-  assert_eq!(s.next_token().token, Token::Sub);
-  assert_eq!(s.next_token().token, Token::Mult);
-  assert_eq!(s.next_token().token, Token::Div);
-  assert_eq!(s.next_token().token, Token::Equal);
-  assert_eq!(s.next_token().token, Token::LessThan);
-  assert_eq!(s.next_token().token, Token::GreaterThan);
-  assert_eq!(s.next_token().token, Token::LessThanOrEqual);
-  assert_eq!(s.next_token().token, Token::GreaterThanOrEqual);
-  assert_eq!(s.next_token().token, Token::NotEqual);
+  assert_eq!(s.next_symbol().token, Token::Add);
+  assert_eq!(s.next_symbol().token, Token::Sub);
+  assert_eq!(s.next_symbol().token, Token::Mult);
+  assert_eq!(s.next_symbol().token, Token::Div);
+  assert_eq!(s.next_symbol().token, Token::Equal);
+  assert_eq!(s.next_symbol().token, Token::LessThan);
+  assert_eq!(s.next_symbol().token, Token::GreaterThan);
+  assert_eq!(s.next_symbol().token, Token::LessThanOrEqual);
+  assert_eq!(s.next_symbol().token, Token::GreaterThanOrEqual);
+  assert_eq!(s.next_symbol().token, Token::NotEqual);
 }
 
 #[test]
@@ -131,11 +147,24 @@ fn test_token_delimiter() {
   let mut s: Scanner = Scanner::new();
   s.build_token("files/program2.txt");
 
-  assert_eq!(s.next_token().token, Token::Semicolon);
-  assert_eq!(s.next_token().token, Token::Colon);
-  assert_eq!(s.next_token().token, Token::Period);
-  assert_eq!(s.next_token().token, Token::LParentheses);
-  assert_eq!(s.next_token().token, Token::RParentheses);
-  assert_eq!(s.next_token().token, Token::Comma);
-  assert_eq!(s.next_token().token, Token::Assign);
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::Colon);
+  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::LParentheses);
+  assert_eq!(s.next_symbol().token, Token::RParentheses);
+  assert_eq!(s.next_symbol().token, Token::Comma);
+  assert_eq!(s.next_symbol().token, Token::Assign);
+}
+
+#[test]
+fn test_token_literal_num() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program3.txt");
+ 
+  assert_eq!(s.next_symbol().token, Token::LitInt(22));
+  assert_eq!(s.next_symbol().token, Token::LitInt(19));
+  assert_eq!(s.next_symbol().token, Token::LitReal(11.2));
+  assert_eq!(s.next_symbol().token, Token::LitReal(932.2));
+  assert_eq!(s.next_symbol().token, Token::LitInt(1));
+  assert_eq!(s.next_symbol().token, Token::LitReal(1.0));
 }

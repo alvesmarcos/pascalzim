@@ -33,7 +33,7 @@ impl Scanner {
           let (token, category) = match c {
             '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
             ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
-            _ => self.literal_num(c, &mut iter)
+            _ => self.literal(c, &mut iter)
           };
           self.deque_token.push_back(Symbol{ token: token, category: category, line: count });
         } else {
@@ -93,6 +93,16 @@ impl Scanner {
     }
   }
 
+  fn literal(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
+    if c.is_digit(10) {
+      self.literal_num(c, iter)
+    } else if c.is_alphabetic() {
+      self.literal_str(c, iter)
+    } else {
+      panic!("Unexpected Symbol!")
+    }
+  }
+
   fn literal_num(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
     let mut num = c.to_string();
 
@@ -108,18 +118,51 @@ impl Scanner {
       } 
       (Token::LitReal(num.parse().unwrap()), Type::RealLiteral)
     } else {
-      println!("{}", num);
       (Token::LitInt(num.parse().unwrap()), Type::IntLiteral)
     }
   }
 
+  fn literal_str(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
+    let mut word = c.to_string();
+
+    while self.is_alphanumeric_or_underl(iter) {
+      word.push(iter.next().unwrap());
+    }
+    match &*word {
+      "program" => (Token::Program, Type::Keyword),
+      "var"  => (Token::Var, Type::Keyword),
+      "integer" => (Token::Integer, Type::Keyword),
+      "real" => (Token::Real, Type::Keyword),
+      "boolean" => (Token::Boolean, Type::Keyword),
+      "procedure" => (Token::Procedure, Type::Keyword),
+      "begin" => (Token::Begin, Type::Keyword),
+      "end" => (Token::End, Type::Keyword),
+      "if" => (Token::If, Type::Keyword),
+      "then" => (Token::Then, Type::Keyword),
+      "else" => (Token::Else, Type::Keyword),
+      "while" => (Token::While, Type::Keyword),
+      "do" => (Token::Do, Type::Keyword),
+      "not" => (Token::Not, Type::Keyword),
+      "or" => (Token::Or, Type::AddOperator),
+      "and" => (Token::And, Type::MulOperator),
+      _ => (Token::LitStr(word), Type::Identifier)
+    }
+  }
+
   pub fn next_symbol(&mut self) -> Symbol {
-    return self.deque_token.pop_front().expect("Deque token is empty!");
+    self.deque_token.pop_front().expect("Deque token is empty!")
   }
 
   fn is_digit(&self, iter:&mut Peekable<Chars>) -> bool {
     match iter.peek() {
       Some(c) => c.is_digit(10),
+      _ => false
+    }
+  }
+
+  fn is_alphanumeric_or_underl(&self, iter: &mut Peekable<Chars>) -> bool {
+    match iter.peek() {
+      Some(c) => if c.is_alphanumeric() || c==&'_' { true } else { false },
       _ => false
     }
   }
@@ -140,6 +183,8 @@ fn test_token_operator() {
   assert_eq!(s.next_symbol().token, Token::LessThanOrEqual);
   assert_eq!(s.next_symbol().token, Token::GreaterThanOrEqual);
   assert_eq!(s.next_symbol().token, Token::NotEqual);
+  assert_eq!(s.next_symbol().token, Token::And);
+  assert_eq!(s.next_symbol().token, Token::Or);
 }
 
 #[test]
@@ -167,4 +212,25 @@ fn test_token_literal_num() {
   assert_eq!(s.next_symbol().token, Token::LitReal(932.2));
   assert_eq!(s.next_symbol().token, Token::LitInt(1));
   assert_eq!(s.next_symbol().token, Token::LitReal(1.0));
+}
+
+#[test]
+fn test_token_keywords() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program4.txt");
+ 
+  assert_eq!(s.next_symbol().token, Token::Var);
+  assert_eq!(s.next_symbol().token, Token::End);
+  assert_eq!(s.next_symbol().token, Token::If);
+  assert_eq!(s.next_symbol().token, Token::Then);
+  assert_eq!(s.next_symbol().token, Token::Integer);
+  assert_eq!(s.next_symbol().token, Token::Real);
+  assert_eq!(s.next_symbol().token, Token::Boolean);
+  assert_eq!(s.next_symbol().token, Token::Procedure);
+  assert_eq!(s.next_symbol().token, Token::Begin);
+  assert_eq!(s.next_symbol().token, Token::Else);
+  assert_eq!(s.next_symbol().token, Token::While);
+  assert_eq!(s.next_symbol().token, Token::Do);
+  assert_eq!(s.next_symbol().token, Token::Not);
+  assert_eq!(s.next_symbol().token, Token::Program);  
 }

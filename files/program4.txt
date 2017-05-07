@@ -1,0 +1,5 @@
+var end if then 
+integer real 
+boolean procedure  begin  
+else while
+do not program

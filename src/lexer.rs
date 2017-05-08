@@ -256,3 +256,29 @@ fn test_token_keywords() {
   assert_eq!(s.next_symbol().token, Token::Not);
   assert_eq!(s.next_symbol().token, Token::Program);  
 }
+
+#[test]
+fn test_token_program() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program6.txt");
+
+  assert_eq!(s.next_symbol().token, Token::Program);
+  assert_eq!(s.next_symbol().token, Token::LitStr("teste".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::Var);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Integer);
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor2".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Real);
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::Begin);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Assign);
+  assert_eq!(s.next_symbol().token, Token::LitInt(10));
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::End);
+  assert_eq!(s.next_symbol().token, Token::Colon);
+}

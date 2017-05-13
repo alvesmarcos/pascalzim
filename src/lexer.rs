@@ -21,7 +21,7 @@ impl Scanner {
   }
   
   pub fn build_token(&mut self, p: &str) {
-    let mut reader = BufReader::new(File::open(p).expect("Open failed!"));
+    let reader = BufReader::new(File::open(p).expect("Open failed!"));
     let mut count = 1;
     let mut block_comment = false;
 

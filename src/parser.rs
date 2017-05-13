@@ -13,24 +13,24 @@ impl Parser {
   pub fn build_ast(&mut self, p: &str) -> bool {
     self.scanner.build_token(p);
 
-    self.symbol = self.scanner.next_symbol();
+    self.set_next_symbol();
     self.parse_program()
   }
 
   fn parse_program(&mut self) -> bool {    
     if self.symbol.token == Token::Program {
-      self.symbol = self.scanner.next_symbol();
+      self.set_next_symbol();
 
       if self.symbol.category == Type::Identifier {
-        self.symbol = self.scanner.next_symbol();
+        self.set_next_symbol();
 
         if self.symbol.token == Token::Semicolon {
-          self.symbol = self.scanner.next_symbol();
+          self.set_next_symbol();
           self.parse_declare_var();
-          // self.symbol = self.scanner.next_symbol();
-          // call declare_subprograms
-          // self.symbol = self.scanner.next_symbol();
-          // call compound command
+          // self.set_next_symbol();
+          // self.parse_declare_subprograms();
+          // self.set_next_symbol();
+          // self.parse_compound_command();
      
           if self.symbol.token == Token::Colon  {
             true
@@ -50,7 +50,7 @@ impl Parser {
 
   fn parse_declare_var(&mut self) {
     if self.symbol.token == Token::Var {
-      self.symbol = self.scanner.next_symbol();
+      self.set_next_symbol();
       self.parse_list_declare_var(false);
     }
   }
@@ -59,13 +59,11 @@ impl Parser {
     self.parse_list_identfiers(ep_closure);
     
     if self.symbol.token == Token::Period {
-      self.symbol = self.scanner.next_symbol();  
+      self.set_next_symbol();  
       self.parse_types();
-     
-      self.symbol = self.scanner.next_symbol();
-      
+    
       if self.symbol.token == Token::Semicolon {
-        self.symbol = self.scanner.next_symbol();
+        self.set_next_symbol();
         self.parse_list_declare_var(true);
       }
     }  else if !ep_closure {
@@ -75,7 +73,7 @@ impl Parser {
 
   fn parse_list_identfiers(&mut self, ep_closure: bool) {
     if self.symbol.category == Type::Identifier {
-      self.symbol = self.scanner.next_symbol();  
+      self.set_next_symbol();  
       self.parse_list_identfiers_recursive();
     } else if !ep_closure {
       panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
@@ -84,10 +82,10 @@ impl Parser {
 
   fn parse_list_identfiers_recursive(&mut self) {
     if self.symbol.token == Token::Comma {
-      self.symbol = self.scanner.next_symbol();
+      self.set_next_symbol();
       
       if self.symbol.category == Type::Identifier {
-        self.symbol = self.scanner.next_symbol();
+        self.set_next_symbol();
         self.parse_list_identfiers_recursive();
       } else {
         panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
@@ -96,9 +94,123 @@ impl Parser {
   }
 
   fn parse_types(&mut self) {
-    if self.symbol.token != Token::Integer && self.symbol.token != Token::Real && self.symbol.token != Token::Boolean {
+    if self.symbol.token == Token::Integer || self.symbol.token == Token::Real || self.symbol.token == Token::Boolean {
+      self.set_next_symbol();
+    } else {
       panic!("Expected type `boolean` or `integer` or `real`  found `{}` => line {}", self.symbol.token, self.symbol.line);      
     }
+  }
+
+  fn parse_declare_subprograms(&mut self) {
+    self.parse_declare_subprogram();
+
+    if self.symbol.token == Token::Semicolon {
+      self.set_next_symbol();
+      self.parse_declare_subprograms();
+    }
+  }
+
+  fn parse_declare_subprogram(&mut self) {
+    if self.symbol.token == Token::Procedure {
+      self.set_next_symbol();
+      self.parse_args();
+
+      if self.symbol.token == Token::Semicolon {
+        self.set_next_symbol();
+        self.parse_declare_var();
+
+        self.set_next_symbol();
+        self.parse_declare_subprograms();
+
+        self.set_next_symbol();
+        self.parse_compound_command();
+      } else {
+        panic!("Expected delimiter `;`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+      }  
+    }
+  }
+
+  fn parse_args(&mut self) {
+    if self.symbol.token == Token::LParentheses {
+      self.set_next_symbol();
+      self.parse_list_params();
+
+      if self.symbol.token == Token::RParentheses {
+        self.set_next_symbol();
+      } else {
+        panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+      } 
+    }
+  }
+
+  fn parse_list_params(&mut self) {
+    self.parse_list_identfiers(false);
+
+    if self.symbol.token == Token::Period {
+      self.set_next_symbol();
+      self.parse_list_params_recursive();
+
+    } else {
+      panic!("Expected delimiter `:`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+    }
+  }
+
+  fn parse_list_params_recursive(&mut self) {
+    if self.symbol.token == Token::Semicolon {
+      self.set_next_symbol();
+      self.parse_list_identfiers(false);
+
+      if self.symbol.token == Token::Period {
+        self.set_next_symbol();
+        self.parse_list_params_recursive();
+
+      } else {
+        panic!("Expected delimiter `:`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+      }
+    }
+  }
+
+  fn parse_compound_command(&mut self) {
+    if self.symbol.token == Token::Begin {
+      self.set_next_symbol();
+      // optional command
+      self.parse_list_command(true);
+      
+      if self.symbol.token == Token::End {
+        self.set_next_symbol();  
+      } else {
+        panic!("Expected keyword `end`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+      }
+    } else {
+      panic!("Expected keyword `begin`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+    }
+  }
+
+  fn parse_list_command(&mut self, ep_closure: bool) {
+    self.parse_command(ep_closure);
+
+    self.set_next_symbol(); 
+    self.parse_list_command_recursive();
+  }
+
+  fn parse_list_command_recursive(&mut self) {
+    if self.symbol.token == Token::Semicolon {
+      self.set_next_symbol(); 
+      self.parse_command(false);
+
+      self.set_next_symbol();
+      self.parse_list_command_recursive();
+    }
+  }
+
+  fn parse_command(&mut self, ep_closure: bool) {
+    if self.symbol.category == Type::Identifier {
+    }
+  }
+
+  #[inline]
+  fn set_next_symbol(&mut self) {
+    self.symbol = self.scanner.next_symbol();
   }
 }
 

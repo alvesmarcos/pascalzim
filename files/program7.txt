@@ -1,0 +1,2 @@
+program teste;
+. {programa exemplo}

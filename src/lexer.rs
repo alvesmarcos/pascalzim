@@ -3,23 +3,23 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Peekable;
 use std::str::Chars;
-use spec::Type;
-use spec::Token;
+use spec::*;
 
 pub struct Symbol {
-  token: Token,
-  category: Type,
-  line: u32
+  pub token: Token,
+  pub category: Type,
+  pub line: u32
 }
 
 pub struct Scanner {
-  deque_token: VecDeque<Symbol>,
+  deque_token: VecDeque<Symbol>
 }
 
 impl Scanner {
   pub fn new() -> Scanner {
     Scanner { deque_token: VecDeque::new() }
   }
+  
   pub fn build_token(&mut self, p: &str) {
     let mut reader = BufReader::new(File::open(p).expect("Open failed!"));
     let mut count = 1;

@@ -1,6 +1,3 @@
-// Autor: Marcos Alves
-// Data: 22/04/2017
-// Sobre: Espceficição reduzida da linguagem pascal
 use std::fmt;
 
 #[derive(PartialEq, Debug)]
@@ -44,7 +41,9 @@ pub enum Token {
   // literal
   LitInt(i32),
   LitReal(f32),
-  LitStr(String)
+  LitStr(String),
+  // Eof
+  Empty
 }
 
 impl fmt::Display for Token {
@@ -85,13 +84,14 @@ impl fmt::Display for Token {
       Token::Div => "/".to_string(),
       Token::LitInt(i) => i.to_string(),
       Token::LitReal(f) => f.to_string(),
-      Token::LitStr(ref s) => s.to_string()
+      Token::LitStr(ref s) => s.to_string(),
+      Token::Empty => "EMPTY".to_string()
     };
     write!(f, "{}", result)
   }
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Type {
   Keyword,
   Identifier,

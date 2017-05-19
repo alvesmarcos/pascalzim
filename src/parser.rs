@@ -12,7 +12,6 @@ impl Parser {
   }
   pub fn build_ast(&mut self, p: &str) -> bool {
     self.scanner.build_token(p);
-
     self.set_next_symbol();
     self.parse_program()
   }
@@ -27,13 +26,13 @@ impl Parser {
         if self.symbol.token == Token::Semicolon {
           self.set_next_symbol();
           self.parse_declare_var();
-          // self.set_next_symbol();
-          // self.parse_declare_subprograms();
-          // self.set_next_symbol();
-          // self.parse_compound_command();
-          // self.set_next_symbol();
+          //self.set_next_symbol();
+          //self.parse_declare_subprograms();
+          //self.set_next_symbol();
+          //self.parse_compound_command();
+          //self.set_next_symbol();
 
-          if self.symbol.token == Token::Colon  {
+          if self.symbol.token == Token::Period  {
             true
           } else {
             panic!("Expected delimiter `.` found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -59,7 +58,7 @@ impl Parser {
   fn parse_list_declare_var(&mut self, ep_closure: bool) {
     self.parse_list_identfiers(ep_closure);
     
-    if self.symbol.token == Token::Period {
+    if self.symbol.token == Token::Colon {
       self.set_next_symbol();  
       self.parse_types();
       self.set_next_symbol();
@@ -295,6 +294,22 @@ impl Parser {
              self.symbol.line);
     }
   }
+
+  fn parse_aditive_op(&mut self, ep_closure: bool) {
+    if self.symbol.token != Token::Add && self.symbol.token != Token::Sub && self.symbol.token != Token::Or && !ep_closure {
+      panic!("Expected Aditive Operator `+` or `-` or `or` found `{}` => line {}", self.symbol.token,
+             self.symbol.line);
+    }
+  }
+
+  fn parse_multiplicative_op(&mut self, ep_closure: bool) {
+    if self.symbol.token != Token::Mult && self.symbol.token != Token::Div && self.symbol.token != Token::And && 
+       self.symbol.token != Token::Power && !ep_closure {
+      panic!("Expected Multiplicative Operator `*` or `/` or `And` or `**` or `^` found `{}` => line {}", self.symbol.token,
+             self.symbol.line);
+    }
+  }
+
 
   #[inline]
   fn set_next_symbol(&mut self) {

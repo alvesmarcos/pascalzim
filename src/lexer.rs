@@ -95,7 +95,7 @@ impl Scanner {
   fn delimiters(&self, c: char, iter: &mut Peekable<Chars>) -> (Token, Type) {
     match c {
       ';' => (Token::Semicolon, Type::Delimiter),
-      '.' => (Token::Colon, Type::Delimiter),
+      '.' => (Token::Period, Type::Delimiter),
       '(' => (Token::LParentheses, Type::Delimiter),
       ')' => (Token::RParentheses, Type::Delimiter),
       ',' => (Token::Comma, Type::Delimiter),
@@ -104,7 +104,7 @@ impl Scanner {
           iter.next();
           (Token::Assign, Type::Command)
         } else {
-          (Token::Period, Type::Delimiter) 
+          (Token::Colon, Type::Delimiter) 
         }
       },
       _ => unimplemented!()
@@ -221,8 +221,8 @@ fn test_token_delimiter() {
   s.build_token("files/program2.txt");
 
   assert_eq!(s.next_symbol().token, Token::Semicolon);
-  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::LParentheses);
   assert_eq!(s.next_symbol().token, Token::RParentheses);
   assert_eq!(s.next_symbol().token, Token::Comma);
@@ -286,11 +286,11 @@ fn test_token_program() {
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::Var);
   assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
-  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::Integer);
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::LitStr("valor2".to_string()));
-  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::Real);
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::Begin);
@@ -299,7 +299,7 @@ fn test_token_program() {
   assert_eq!(s.next_symbol().token, Token::LitInt(10));
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::End);
-  assert_eq!(s.next_symbol().token, Token::Colon);
+  assert_eq!(s.next_symbol().token, Token::Period);
 }
 
 #[test]
@@ -312,11 +312,11 @@ fn test_token_power() {
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::Var);
   assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
-  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::Integer);
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::LitStr("valor2".to_string()));
-  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Colon);
   assert_eq!(s.next_symbol().token, Token::Real);
   assert_eq!(s.next_symbol().token, Token::Semicolon);
   assert_eq!(s.next_symbol().token, Token::Begin);
@@ -337,5 +337,5 @@ fn test_token_power() {
 
   //  end.
   assert_eq!(s.next_symbol().token, Token::End);
-  assert_eq!(s.next_symbol().token, Token::Colon);
+  assert_eq!(s.next_symbol().token, Token::Period);
 }

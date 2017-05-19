@@ -42,7 +42,6 @@ pub enum Token {
   LitInt(i32),
   LitReal(f32),
   LitStr(String),
-  // Eof
   Empty
 }
 
@@ -85,7 +84,7 @@ impl fmt::Display for Token {
       Token::LitInt(i) => i.to_string(),
       Token::LitReal(f) => f.to_string(),
       Token::LitStr(ref s) => s.to_string(),
-      Token::Empty => "EMPTY".to_string()
+      Token::Empty => "EOF".to_string()
     };
     write!(f, "{}", result)
   }

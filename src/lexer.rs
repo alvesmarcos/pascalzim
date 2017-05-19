@@ -5,6 +5,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 use spec::*;
 
+#[derive(Debug)]
 pub struct Symbol {
   pub token: Token,
   pub category: Type,
@@ -175,6 +176,16 @@ impl Scanner {
       _ => false
     }
   }
+}
+
+#[test]
+fn test_print_vecdeque() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program6.txt");
+  for num in s.deque_token.iter() {
+    println!("{:?}", num);
+  }
+  assert!(true);
 }
 
 #[test]

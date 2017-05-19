@@ -31,7 +31,8 @@ impl Parser {
           // self.parse_declare_subprograms();
           // self.set_next_symbol();
           // self.parse_compound_command();
-     
+          // self.set_next_symbol();
+
           if self.symbol.token == Token::Colon  {
             true
           } else {
@@ -61,7 +62,8 @@ impl Parser {
     if self.symbol.token == Token::Period {
       self.set_next_symbol();  
       self.parse_types();
-    
+      self.set_next_symbol();
+      
       if self.symbol.token == Token::Semicolon {
         self.set_next_symbol();
         self.parse_list_declare_var(true);
@@ -94,15 +96,14 @@ impl Parser {
   }
 
   fn parse_types(&mut self) {
-    if self.symbol.token == Token::Integer || self.symbol.token == Token::Real || self.symbol.token == Token::Boolean {
-      self.set_next_symbol();
-    } else {
-      panic!("Expected type `boolean` or `integer` or `real`  found `{}` => line {}", self.symbol.token, self.symbol.line);      
-    }
+    if self.symbol.token != Token::Integer && self.symbol.token != Token::Real && self.symbol.token != Token::Boolean {
+      panic!("Expected type `boolean` or `integer` or `real`  found `{}` => line {}", self.symbol.token, self.symbol.line); 
+    } 
   }
 
   fn parse_declare_subprograms(&mut self) {
-    self.parse_declare_subprogram();
+    self.parse_declare_subprogram(true);
+    self.set_next_symbol();
 
     if self.symbol.token == Token::Semicolon {
       self.set_next_symbol();
@@ -110,23 +111,30 @@ impl Parser {
     }
   }
 
-  fn parse_declare_subprogram(&mut self) {
+  fn parse_declare_subprogram(&mut self, ep_closure: bool) {
     if self.symbol.token == Token::Procedure {
       self.set_next_symbol();
-      self.parse_args();
 
-      if self.symbol.token == Token::Semicolon {
+      if self.symbol.category == Type::Identifier {
         self.set_next_symbol();
-        self.parse_declare_var();
+        self.parse_args();
+        self.set_next_symbol();
 
-        self.set_next_symbol();
-        self.parse_declare_subprograms();
+        if self.symbol.token == Token::Semicolon {
+          self.set_next_symbol();
+          self.parse_declare_var();
 
-        self.set_next_symbol();
-        self.parse_compound_command();
+          self.set_next_symbol();
+          self.parse_declare_subprograms();
+
+          self.set_next_symbol();
+          self.parse_compound_command();
+        }
       } else {
-        panic!("Expected delimiter `;`  found `{}` => line {}", self.symbol.token, self.symbol.line);
-      }  
+        panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
+      }
+    } else if !ep_closure {
+      panic!("Expected delimiter `;`  found `{}` => line {}", self.symbol.token, self.symbol.line);  
     }
   }
 
@@ -134,17 +142,17 @@ impl Parser {
     if self.symbol.token == Token::LParentheses {
       self.set_next_symbol();
       self.parse_list_params();
+      self.set_next_symbol();
 
-      if self.symbol.token == Token::RParentheses {
-        self.set_next_symbol();
-      } else {
+      if self.symbol.token != Token::RParentheses {
         panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
-      } 
+      }
     }
   }
 
   fn parse_list_params(&mut self) {
     self.parse_list_identfiers(false);
+    self.set_next_symbol();
 
     if self.symbol.token == Token::Period {
       self.set_next_symbol();
@@ -159,6 +167,7 @@ impl Parser {
     if self.symbol.token == Token::Semicolon {
       self.set_next_symbol();
       self.parse_list_identfiers(false);
+      self.set_next_symbol();
 
       if self.symbol.token == Token::Period {
         self.set_next_symbol();
@@ -173,17 +182,19 @@ impl Parser {
   fn parse_compound_command(&mut self) {
     if self.symbol.token == Token::Begin {
       self.set_next_symbol();
-      // optional command
-      self.parse_list_command(true);
-      
-      if self.symbol.token == Token::End {
-        self.set_next_symbol();  
-      } else {
+      self.parse_optional_command();
+      self.set_next_symbol();
+
+      if self.symbol.token != Token::End {
         panic!("Expected keyword `end`  found `{}` => line {}", self.symbol.token, self.symbol.line);
       }
     } else {
       panic!("Expected keyword `begin`  found `{}` => line {}", self.symbol.token, self.symbol.line);
     }
+  }
+
+  fn parse_optional_command(&mut self) {
+    self.parse_list_command(true);
   }
 
   fn parse_list_command(&mut self, ep_closure: bool) {
@@ -205,6 +216,83 @@ impl Parser {
 
   fn parse_command(&mut self, ep_closure: bool) {
     if self.symbol.category == Type::Identifier {
+      self.set_next_symbol();
+      
+      if self.symbol.token == Token::Assign {
+        self.set_next_symbol();
+        self.parse_expr();
+      } else {
+        self.parse_args();
+      }
+    } else if self.symbol.token == Token::Begin {
+      self.parse_compound_command();
+
+    } else if self.symbol.token == Token::If {
+      self.set_next_symbol();
+      self.parse_expr();
+      self.set_next_symbol();
+      
+      if self.symbol.token == Token::Then {
+        self.set_next_symbol();
+        self.parse_command(false);
+
+        self.set_next_symbol();
+        self.parse_else();
+      } else {
+        panic!("Expected keyword `then`  found `{}` => line {}", self.symbol.token, self.symbol.line);
+      }
+    } else if self.symbol.token == Token::While {
+      self.set_next_symbol();
+      self.parse_expr();
+
+      if self.symbol.token == Token::Do {
+        self.set_next_symbol();
+        self.parse_command(false);
+
+      } else {
+         panic!("Expected keyword `do`  found `{}` => line {}", self.symbol.token, self.symbol.line);        
+      }
+    } else if !ep_closure {
+       panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
+    }
+  }
+
+  fn parse_else(&mut self) {
+    if self.symbol.token == Token::Else {
+      self.parse_command(false);
+    }
+  } 
+
+  fn parse_list_expr(&mut self) {
+    self.parse_expr();
+    self.set_next_symbol();
+    self.parse_list_expr_recursive();
+  }
+
+  fn parse_list_expr_recursive(&mut self) {
+    if self.symbol.token == Token::Comma {
+      self.set_next_symbol();
+      self.parse_expr();
+
+      self.set_next_symbol();
+      self.parse_list_expr_recursive();
+    }
+  }
+
+  fn parse_expr(&mut self) {
+    // self.parse_simple_expr();
+    self.set_next_symbol();
+    self.parse_relational_op(true);
+
+    self.set_next_symbol(); 
+  }
+
+  fn parse_relational_op(&mut self, ep_closure: bool) {
+    if self.symbol.token != Token::Equal && self.symbol.token != Token::NotEqual && self.symbol.token != Token::GreaterThan && 
+       self.symbol.token != Token::LessThan && self.symbol.token != Token::GreaterThanOrEqual && 
+       self.symbol.token != Token::LessThanOrEqual && !ep_closure {
+      panic!("Expected Operator relational `=` or `<>` or `>` or `<` or `>=` or `<=` found `{}` => line {}", self.symbol.token,
+             self.symbol.line);
     }
   }
 

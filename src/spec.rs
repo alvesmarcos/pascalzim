@@ -38,6 +38,7 @@ pub enum Token {
   Sub,
   Mult,
   Div,
+  Power,
   // literal
   LitInt(i32),
   LitReal(f32),
@@ -81,6 +82,7 @@ impl fmt::Display for Token {
       Token::Sub => "-".to_string(),
       Token::Mult => "*".to_string(),
       Token::Div => "/".to_string(),
+      Token::Power => "** | ^".to_string(),
       Token::LitInt(i) => i.to_string(),
       Token::LitReal(f) => f.to_string(),
       Token::LitStr(ref s) => s.to_string(),

@@ -39,7 +39,7 @@ impl Scanner {
             if iter.next() == Some('}') || c == '}' { block_comment = false; }
           } else {
             let (token, category) = match c {
-              '+' | '-' | '/' | '*' | '=' | '<' | '>' => self.operators(c, &mut iter),
+              '+' | '-' | '/' | '*' | '=' | '<' | '>' | '^' => self.operators(c, &mut iter),
               ';' | '.' | ':' | '(' | ')' | ',' => self.delimiters(c, &mut iter),
               _ => self.literal(c, &mut iter)
             };
@@ -59,7 +59,15 @@ impl Scanner {
       '+' => (Token::Add, Type::AddOperator),
       '-' => (Token::Sub, Type::AddOperator),
       '/' => (Token::Div, Type::MulOperator),
-      '*' => (Token::Mult, Type::MulOperator),
+      '^' => (Token::Power, Type::MulOperator),
+      '*' => {
+        if iter.peek() == Some(&'*'){
+          iter.next();
+          (Token::Power, Type::MulOperator)  
+        } else {
+          (Token::Mult, Type::MulOperator)
+        }
+      },
       '=' => (Token::Equal, Type::RelOperator),
       '<' => {
         if iter.peek() == Some(&'=') {
@@ -181,7 +189,7 @@ impl Scanner {
 #[test]
 fn test_print_vecdeque() {
   let mut s: Scanner = Scanner::new();
-  s.build_token("files/program6.txt");
+  s.build_token("files/program8.txt");
   for num in s.deque_token.iter() {
     println!("{:?}", num);
   }
@@ -290,6 +298,44 @@ fn test_token_program() {
   assert_eq!(s.next_symbol().token, Token::Assign);
   assert_eq!(s.next_symbol().token, Token::LitInt(10));
   assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::End);
+  assert_eq!(s.next_symbol().token, Token::Colon);
+}
+
+#[test]
+fn test_token_power() {
+  let mut s: Scanner = Scanner::new();
+  s.build_token("files/program8.txt");
+
+  assert_eq!(s.next_symbol().token, Token::Program);
+  assert_eq!(s.next_symbol().token, Token::LitStr("teste".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::Var);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Integer);
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor2".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Period);
+  assert_eq!(s.next_symbol().token, Token::Real);
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+  assert_eq!(s.next_symbol().token, Token::Begin);
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor1".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Assign);
+  assert_eq!(s.next_symbol().token, Token::LitInt(10));
+  assert_eq!(s.next_symbol().token, Token::Power);
+  assert_eq!(s.next_symbol().token, Token::LitInt(8));
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+
+  //  valor2 := 10^8;
+  assert_eq!(s.next_symbol().token, Token::LitStr("valor2".to_string()));
+  assert_eq!(s.next_symbol().token, Token::Assign);
+  assert_eq!(s.next_symbol().token, Token::LitInt(10));
+  assert_eq!(s.next_symbol().token, Token::Power);
+  assert_eq!(s.next_symbol().token, Token::LitInt(8));
+  assert_eq!(s.next_symbol().token, Token::Semicolon);
+
+  //  end.
   assert_eq!(s.next_symbol().token, Token::End);
   assert_eq!(s.next_symbol().token, Token::Colon);
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Token {
   // keywords
   Program,
@@ -91,6 +91,11 @@ impl fmt::Display for Token {
     write!(f, "{}", result)
   }
 }
+
+
+
+
+
 
 #[derive(PartialEq, Debug)]
 pub enum Type {

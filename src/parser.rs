@@ -1,14 +1,32 @@
 use lexer::*;
 use spec::*;
 
+
+#[derive(Debug)]
+pub enum Category {
+  Integer,
+  Real,
+  Boolean,
+  Procedure,
+  Program,
+  Sentinel
+}
+
+#[derive(Debug)]
+pub struct Identifier {
+  name: String,
+  category: Category
+}
+
 pub struct Parser {
   scanner: Scanner,
-  symbol: Symbol
+  symbol: Symbol,
+  stack: Vec<Identifier>
 } 
 
 impl Parser {
   pub fn new() -> Parser {
-    Parser { scanner: Scanner::new(), symbol: Symbol { token: Token::Empty, category: Type::Eof, line: 0 } }
+    Parser { scanner: Scanner::new(), symbol: Symbol { token: Token::Empty, category: Type::Eof, line: 0 }, stack: Vec::new() }
   }
   pub fn build_ast(&mut self, p: &str) -> bool {
     self.scanner.build_token(p);
@@ -16,19 +34,56 @@ impl Parser {
     self.parse_program()
   }
 
-  fn parse_program(&mut self) -> bool {    
+/*
+programa →
+	program id;
+	declarações_variáveis
+	declarações_de_subprogramas
+	comando_composto
+	.
+*/
+
+  fn parse_program(&mut self) -> bool {   
+
+    //	program 
     if self.symbol.token == Token::Program {
+      
+      // pushing
+      self.stack.push(
+        Identifier {
+          name: "$".to_string(), 
+          category: Category::Sentinel
+        });
+
       self.set_next_symbol();
 
+      // id
       if self.symbol.category == Type::Identifier {
+        
+      //TODO: encapsular
+      // pushing
+      self.stack.push(
+        Identifier {
+          name: match self.symbol.token {
+            Token::LitStr(ref s) => s.to_string(),
+            _ => unimplemented!()
+          }, 
+          category: Category::Program
+        });
+        
         self.set_next_symbol();
 
+        //;
         if self.symbol.token == Token::Semicolon {
           self.set_next_symbol();
+          // declarações_variáveis
           self.parse_declare_var();
+          // declarações_de_subprogramas
           self.parse_declare_subprograms();
+          //comando_composto
           self.parse_compound_command();
          
+         // .
           if self.symbol.token == Token::Period  {
             true
           } else {
@@ -45,53 +100,112 @@ impl Parser {
     }
   }
 
+
+/*
+declarações_variáveis →
+	var lista_declarações_variáveis | ε
+*/
   fn parse_declare_var(&mut self) {
+
+    //  var
     if self.symbol.token == Token::Var {
       self.set_next_symbol();
-      self.parse_list_declare_var(false);
+      //  lista_declarações_variáveis
+      self.parse_list_declare_var(false); //nao pode ser vazio
     }
   }
 
+/*
+lista_declarações_variáveis →
+	lista_de_identificadores: tipo; lista_declarações_variáveis'
+*/
   fn parse_list_declare_var(&mut self, ep_closure: bool) {
-    self.parse_list_identfiers(ep_closure);
     
+    //  lista_de_identificadores
+    self.parse_list_identfiers(ep_closure);
+  
+    // :
     if self.symbol.token == Token::Colon {
       self.set_next_symbol();  
+      // tipo
       self.parse_types();
 
+      // ;
       if self.symbol.token == Token::Semicolon {
         self.set_next_symbol();
-        self.parse_list_declare_var(true);
+        // lista_declarações_variáveis'
+        self.parse_list_declare_var(true); //pode ser vazio
       }
     }  else if !ep_closure {
       panic!("Expected delimiter `:` found `{}` => line {}", self.symbol.token, self.symbol.line);
     }
   }
 
+/*
+  lista_de_identificadores →
+	id lista_de_identificadores'
+ 
+*/
   fn parse_list_identfiers(&mut self, ep_closure: bool) {
+    // id
     if self.symbol.category == Type::Identifier {
+      // pushing
+      self.stack.push(
+        Identifier {
+          name: match self.symbol.token {
+            Token::LitStr(ref s) => s.to_string(),
+            _ => unimplemented!()
+          }, 
+          category: Category::Integer
+        });
       self.set_next_symbol();  
+
+      // lista_de_identificadores'
       self.parse_list_identfiers_recursive();
     } else if !ep_closure {
       panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
     }
   }
 
+/*
+lista_de_identificadores' →
+	, id lista_de_identificadores'
+	| ε
+*/
   fn parse_list_identfiers_recursive(&mut self) {
+
+    // ,
     if self.symbol.token == Token::Comma {
       self.set_next_symbol();
-      
+      // id
       if self.symbol.category == Type::Identifier {
+        // pushing
+      self.stack.push(
+        Identifier {
+          name: match self.symbol.token {
+            Token::LitStr(ref s) => s.to_string(),
+            _ => unimplemented!()
+          }, 
+          category: Category::Integer
+        });
         self.set_next_symbol();
+        // lista_de_identificadores'
         self.parse_list_identfiers_recursive();
       } else {
         panic!("Expected identifier  found `{:?}` => line {}", self.symbol.category, self.symbol.line);
       } 
     }
   }
-
+/*
+tipo →
+	integer | real | boolean
+*/
   fn parse_types(&mut self) {
+
+    //integer | real | boolean
     if self.symbol.token == Token::Integer || self.symbol.token == Token::Real || self.symbol.token == Token::Boolean {
+      /**VAI FICAR AQUI*/
+      
       self.set_next_symbol();
     } else {
       panic!("Expected type `boolean` or `integer` or `real`  found `{}` => line {}", self.symbol.token, self.symbol.line); 
@@ -114,6 +228,26 @@ impl Parser {
       self.set_next_symbol();
 
       if self.symbol.category == Type::Identifier {
+        
+        //pushing
+        self.stack.push(
+          Identifier {
+            name: match self.symbol.token {
+              Token::LitStr(ref s) => s.to_string(),
+              _ => unimplemented!()
+            }, 
+            category: Category::Procedure
+          }
+        );
+
+        self.stack.push(
+          Identifier {
+            name: "$".to_string(), 
+            category: Category::Sentinel
+          }
+        );
+        
+
         self.set_next_symbol();
         self.parse_args();
         
@@ -331,7 +465,7 @@ impl Parser {
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
               self.symbol.token == Token::LitStr("true".to_string()) || self.symbol.token == Token::LitStr("false".to_string()) ||
-              self.symbol.token == Token::LitStr("not".to_string()) {
+              self.symbol.token == Token::Not {
       self.set_next_symbol();
     } else {
       panic!("Expected Factor `id` or `real` or `integer` or `true` or false` or `(` or `not` found `{}` => line {}",
@@ -343,6 +477,30 @@ impl Parser {
   fn set_next_symbol(&mut self) {
     self.symbol = self.scanner.next_symbol();
   }
+
+//util function for conversion
+  fn get_string(&self, token: Token) -> String {
+    match token {
+      Token::Program => "program".to_string(),
+      Token::Integer => "integer".to_string(),
+      Token::Real => "real".to_string(),
+      Token::Boolean => "boolean".to_string(),
+      Token::Procedure => "procedure".to_string(),
+      Token::LitStr(ref s) => s.to_string(),
+      _ => unimplemented!()
+    }
+  }
+}
+
+
+#[test]
+fn test_stack(){
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program10.txt");
+  for id in p1.stack.iter() {
+    println!("{:?}", id);
+  }
+  assert!(false);
 }
 
 #[test]

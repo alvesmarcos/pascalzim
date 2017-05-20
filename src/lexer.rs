@@ -189,7 +189,7 @@ impl Scanner {
 #[test]
 fn test_print_vecdeque() {
   let mut s: Scanner = Scanner::new();
-  s.build_token("files/program8.txt");
+  s.build_token("files/program10.txt");
   for num in s.deque_token.iter() {
     println!("{:?}", num);
   }

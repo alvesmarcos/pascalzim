@@ -161,6 +161,8 @@ impl Scanner {
       "while" => (Token::While, Type::Keyword),
       "do" => (Token::Do, Type::Keyword),
       "not" => (Token::Not, Type::Keyword),
+      "true" => (Token::True, Type::Keyword),
+      "false" => (Token::False, Type::Keyword),  
       "or" => (Token::Or, Type::AddOperator),
       "and" => (Token::And, Type::MulOperator),
       _ => (Token::LitStr(word), Type::Identifier)

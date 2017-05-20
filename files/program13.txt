@@ -10,11 +10,7 @@ var
 begin  {tente gerar um erro usando um caracter n‹o permitido.. tipo $}
    num := 3 * 5;
    while num<>0 do
-   begin
-    if (num >= 20) and (num <=90) then
-        num := 10
-    else
-        num := num + 1;
-   end;
+    num := 10; 
+
    result := num
 end.

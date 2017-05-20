@@ -149,17 +149,20 @@ lista_declarações_variáveis →
   fn parse_list_identfiers(&mut self, ep_closure: bool) {
     // id
     if self.symbol.category == Type::Identifier {
-      // pushing
-      self.stack.push(
-        Identifier {
-          name: match self.symbol.token {
-            Token::LitStr(ref s) => s.to_string(),
-            _ => unimplemented!()
-          }, 
-          category: Category::Integer
-        });
-      self.set_next_symbol();  
-
+      let name: String = match self.symbol.token {
+                Token::LitStr(ref s) => s.to_string(),
+                _ => unimplemented!() };
+      if !self.search_scope(&name) {
+        // pushing
+        self.stack.push(
+          Identifier {
+            name: name, 
+            category: Category::Integer
+          });
+        self.set_next_symbol();  
+      } else {
+        panic!("Identifier `{}` already declared", name);
+      }
       // lista_de_identificadores'
       self.parse_list_identfiers_recursive();
     } else if !ep_closure {
@@ -313,6 +316,7 @@ tipo →
       self.parse_list_command(true);
      
       if self.symbol.token == Token::End {
+        self.clear_scope();
         self.set_next_symbol();
       } else {
         panic!("Expected keyword `end`  found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -338,13 +342,20 @@ tipo →
 
   fn parse_command(&mut self, ep_closure: bool) {
     if self.symbol.category == Type::Identifier {
-      self.set_next_symbol();
-      
-      if self.symbol.token == Token::Assign {
+      let name: String = match self.symbol.token {
+                              Token::LitStr(ref s) => s.to_string(),
+                              _ => unimplemented!() };
+      if  self.search_stack(&name) {
         self.set_next_symbol();
-        self.parse_expr();
+        
+        if self.symbol.token == Token::Assign {
+          self.set_next_symbol();
+          self.parse_expr();
+        } else {
+          self.parse_active_procedure();
+        }
       } else {
-        self.parse_active_procedure();
+        panic!("Identifier `{}` not declared => line {}", name, self.symbol.line);
       }
     } else if self.symbol.token == Token::Begin {
       self.parse_compound_command();
@@ -453,7 +464,14 @@ tipo →
 
   fn parse_factor(&mut self) {
     if self.symbol.category == Type::Identifier {
-      self.set_next_symbol();
+       let name: String = match self.symbol.token {
+                              Token::LitStr(ref s) => s.to_string(),
+                              _ => unimplemented!() };
+      if self.search_stack(&name) {
+        self.set_next_symbol();
+      } else {
+        panic!("Identifier `{}` not declared => line {}", name, self.symbol.line);
+      }
       self.parse_active_procedure();
 
     } else if self.symbol.token == Token::LParentheses {
@@ -464,7 +482,7 @@ tipo →
         self.set_next_symbol();
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
-              self.symbol.token == Token::LitStr("true".to_string()) || self.symbol.token == Token::LitStr("false".to_string()) ||
+              self.symbol.token == Token::True || self.symbol.token == Token::False ||
               self.symbol.token == Token::Not {
       self.set_next_symbol();
     } else {
@@ -473,22 +491,48 @@ tipo →
     }   
   }
 
+  fn search_scope(&self, id: &String) -> bool {
+    let len = self.stack.len();
+
+    for x in (0..len).rev() {  
+      if self.stack[x].name == "$" {
+        return false;
+      }
+      if self.stack[x].name == *id {
+        return true;
+      } 
+    }
+    false
+  }
+
+  fn search_stack(&self, id: &String) -> bool {
+    let len = self.stack.len();
+
+    for x in (0..len).rev() {
+      if self.stack[x].name == *id {
+        return true;
+      } 
+    }
+    false
+  }
+
+
+  fn clear_scope(&mut self) {
+    let len = self.stack.len();
+
+    for x in (0..len).rev() {
+      if self.stack[x].name == "$" {
+        self.stack.pop();
+        break;
+      } else {
+        self.stack.pop();
+      }
+    }
+  }
+
   #[inline]
   fn set_next_symbol(&mut self) {
     self.symbol = self.scanner.next_symbol();
-  }
-
-//util function for conversion
-  fn get_string(&self, token: Token) -> String {
-    match token {
-      Token::Program => "program".to_string(),
-      Token::Integer => "integer".to_string(),
-      Token::Real => "real".to_string(),
-      Token::Boolean => "boolean".to_string(),
-      Token::Procedure => "procedure".to_string(),
-      Token::LitStr(ref s) => s.to_string(),
-      _ => unimplemented!()
-    }
   }
 }
 
@@ -496,11 +540,11 @@ tipo →
 #[test]
 fn test_stack(){
   let mut p1: Parser = Parser::new();
-  let res = p1.build_ast("files/program10.txt");
+  let res = p1.build_ast("files/program6.txt");
   for id in p1.stack.iter() {
     println!("{:?}", id);
   }
-  assert!(false);
+  assert!(res);
 }
 
 #[test]

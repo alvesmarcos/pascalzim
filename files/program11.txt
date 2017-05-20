@@ -1,10 +1,10 @@
 program exemplo;
-var m: integer;
+var m, a: integer;
   procedure p; { erro aqui falta ';'}
   var b, c: integer;
   begin
     c := 4;
   end;
 begin
- a := b;
+ a := m;
 end.

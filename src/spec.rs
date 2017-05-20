@@ -17,6 +17,8 @@ pub enum Token {
   While,
   Do,
   Not,
+  True,
+  False,
   // delimiters
   Semicolon,
   Period,
@@ -63,6 +65,8 @@ impl fmt::Display for Token {
       Token::While => "while".to_string(),
       Token::Do => "do".to_string(),
       Token::Not => "not".to_string(),
+      Token::True => "true".to_string(),
+      Token::False => "false".to_string(),
       Token::Semicolon => ";".to_string(),
       Token::Colon => ":".to_string(),
       Token::Period => ".".to_string(),

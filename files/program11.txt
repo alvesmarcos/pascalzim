@@ -1,0 +1,10 @@
+program exemplo;
+var m: integer;
+  procedure p; { erro aqui falta ';'}
+  var b, c: integer;
+  begin
+    c := 4;
+  end;
+begin
+ a := b;
+end.

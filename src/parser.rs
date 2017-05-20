@@ -376,3 +376,43 @@ fn test_parser_program10() {
 
   assert!(res);
 }
+
+#[test]
+fn test_parser_program11() {
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program11.txt");
+
+  assert!(res);
+}
+
+#[test]
+fn test_parser_program12() {
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program12.txt");
+
+  assert!(res);
+}
+
+#[test]
+fn test_parser_program13() {
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program13.txt");
+
+  assert!(res);
+}
+
+#[test]
+fn test_parser_program14() {
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program14.txt");
+  
+  assert!(res);
+}
+
+#[test]
+fn test_parser_program15() {
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program15.txt");
+  
+  assert!(res);
+}

@@ -1,0 +1,20 @@
+program Test3; {programa para teste do lexico}
+var
+   num  : integer;
+   result   : integer;
+   procedure p; { erro aqui falta ';'}
+    var b, c: integer;
+    begin
+      c := 4;
+    end;
+begin  {tente gerar um erro usando um caracter n‹o permitido.. tipo $}
+   num := 3 * 5;
+   while num<>0 do
+   begin
+    if (num >= 20) and (num <=90) then
+        num := 10
+    else
+        num := num + 1;
+   end;
+   result := num
+end.

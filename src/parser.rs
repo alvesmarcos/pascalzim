@@ -29,7 +29,7 @@ pub struct Parser {
   // temporary buffer to store the acceptable types of a category 
   acceptable_categories: Vec<Category>,
   expression : Vec<Symbol>
-  } 
+} 
 
 impl Parser {
   pub fn new() -> Parser {
@@ -378,8 +378,8 @@ tipo →
         if self.symbol.token == Token::Assign {
           self.set_next_symbol();
           self.parse_expr();
-
-
+          
+          self.evaluate_expr();
         } else {
           self.parse_active_procedure();
         }
@@ -557,7 +557,7 @@ tipo →
       Category::Boolean => vec![Category::Boolean],
       Category::Procedure => vec![Category::Undefined],
       _ => unimplemented!()
-    }
+    };
   }
 
   fn search_scope(&self, id: &String) -> bool {
@@ -599,6 +599,30 @@ tipo →
     }
   }
 
+  fn evaluate_expr(&mut self) {
+    let mut cat: Category;
+    let len = self.expression.len();
+    // atomic expression
+    if len == 1 {
+      let syml = self.expression.pop().unwrap();
+
+      cat = match syml.token {
+              Token::LitStr(ref s) => self.search_stack(s),
+              Token::True | Token::False => Category::Boolean,
+              Token::LitReal(r) => Category::Real,
+              Token::LitInt(i) => Category::Integer,
+              _ => unimplemented!() 
+            };
+    } else {
+      cat = Category::Undefined;
+    }
+    // find category in vec acceptable_categories 
+    if len == 1 && self.acceptable_categories.iter().find(|&&x| x==cat) == None {
+      panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+    }
+    self.expression.clear();
+  } 
+
   #[inline]
   fn set_next_symbol(&mut self) {
     self.symbol = self.scanner.next_symbol();
@@ -609,11 +633,11 @@ tipo →
 #[test]
 fn test_expr(){
   let mut p1: Parser = Parser::new();
-  let res = p1.build_ast("files/program10.txt");
+  let res = p1.build_ast("files/program6.txt");
   for ex in p1.expression.iter() {
     println!("{:?}", ex);
   }
-  assert!(false);
+  assert!(res);
 }
 
 

@@ -96,17 +96,13 @@ impl fmt::Display for Token {
   }
 }
 
-
-
-
-
-
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {
   Keyword,
   Identifier,
   IntLiteral,
   RealLiteral,
+  BoolLiteral,
   Delimiter,
   Command,
   RelOperator,

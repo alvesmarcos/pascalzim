@@ -370,7 +370,7 @@ tipo →
 
       let category = self.search_stack(&name); 
 
-      if  category != Category::Undefined {
+      if category != Category::Undefined {
         
         self.acceptable_types(category); //refresh the acceptable_categories vector
         self.set_next_symbol();
@@ -393,6 +393,9 @@ tipo →
       self.set_next_symbol();
       self.parse_expr();
       
+      self.acceptable_types(Category::Boolean);
+      self.evaluate_expr();
+
       if self.symbol.token == Token::Then {
         self.set_next_symbol();
         self.parse_command(false);
@@ -404,6 +407,9 @@ tipo →
     } else if self.symbol.token == Token::While {
       self.set_next_symbol();
       self.parse_expr();
+
+      self.acceptable_types(Category::Boolean);
+      self.evaluate_expr();
 
       if self.symbol.token == Token::Do {
         self.set_next_symbol();
@@ -419,12 +425,12 @@ tipo →
 
   fn parse_active_procedure(&mut self) {
     if self.symbol.token == Token::LParentheses {
-      self.expression.push(self.symbol.clone());
+      //self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_list_expr();
 
       if self.symbol.token == Token::RParentheses {
-        self.expression.push(self.symbol.clone());
+        //self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       } else {
         panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -515,12 +521,12 @@ tipo →
       self.parse_active_procedure();
 
     } else if self.symbol.token == Token::LParentheses {
-      self.expression.push(self.symbol.clone());
+      // self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
 
       if self.symbol.token == Token::RParentheses {
-        self.expression.push(self.symbol.clone());
+        // self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
@@ -600,27 +606,44 @@ tipo →
   }
 
   fn evaluate_expr(&mut self) {
-    let mut cat: Category;
-    let len = self.expression.len();
     // atomic expression
-    if len == 1 {
+    if self.expression.len() == 1 {
       let syml = self.expression.pop().unwrap();
-
-      cat = match syml.token {
-              Token::LitStr(ref s) => self.search_stack(s),
-              Token::True | Token::False => Category::Boolean,
-              Token::LitReal(r) => Category::Real,
-              Token::LitInt(i) => Category::Integer,
-              _ => unimplemented!() 
-            };
-    } else {
-      cat = Category::Undefined;
-    }
-    // find category in vec acceptable_categories 
-    if len == 1 && self.acceptable_categories.iter().find(|&&x| x==cat) == None {
-      panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+      let cat = self.match_token_category(syml);
+      
+      if self.acceptable_categories.iter().find(|&&x| x==cat) == None {
+        panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+      }
+    } else if self.acceptable_categories[0] == Category::Integer || self.acceptable_categories[0] == Category::Real {
+      for e in self.expression.iter() {
+        if e.category == Type::RelOperator {
+          panic!("Type `{:?}` doesn't support operator relational `{}` => line {}", self.acceptable_categories[0], e.token, e.line);
+        } else if e.category == Type::AddOperator || e.category == Type::MulOperator || e.token == Token::Not {
+          match e.token {
+            Token::Not | Token::And | Token::Or =>  panic!("Type `{:?}` doesn't support operator logical `{}` => line {}", self.acceptable_categories[0], e.token, e.line),
+            _ => continue
+          }
+        } else {
+          let cat = self.match_token_category(e.clone());
+          if self.acceptable_categories.iter().find(|&&x| x==cat) == None {
+            panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+          }
+        }   
+      }
+    } else if self.acceptable_categories[0] == Category::Boolean {
+      // TODO
     }
     self.expression.clear();
+  }
+
+  fn match_token_category(&self, sym: Symbol) -> Category {
+    match sym.token {
+      Token::LitStr(ref s) => self.search_stack(s),
+      Token::True | Token::False => Category::Boolean,
+      Token::LitReal(r) => Category::Real,
+      Token::LitInt(i) => Category::Integer,
+      _ => unimplemented!() 
+    }
   } 
 
   #[inline]

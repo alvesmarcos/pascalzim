@@ -425,12 +425,12 @@ tipo →
 
   fn parse_active_procedure(&mut self) {
     if self.symbol.token == Token::LParentheses {
-      //self.expression.push(self.symbol.clone());
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_list_expr();
 
       if self.symbol.token == Token::RParentheses {
-        //self.expression.push(self.symbol.clone());
+        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       } else {
         panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -521,12 +521,12 @@ tipo →
       self.parse_active_procedure();
 
     } else if self.symbol.token == Token::LParentheses {
-      // self.expression.push(self.symbol.clone());
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
 
       if self.symbol.token == Token::RParentheses {
-        // self.expression.push(self.symbol.clone());
+        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
@@ -611,7 +611,7 @@ tipo →
       let syml = self.expression.pop().unwrap();
       let cat = self.match_token_category(syml);
       
-      if self.acceptable_categories.iter().find(|&&x| x==cat) == None {
+      if !self.acceptable_categories.contains(&cat) {
         panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
       }
     } else if self.acceptable_categories[0] == Category::Integer || self.acceptable_categories[0] == Category::Real {
@@ -625,14 +625,150 @@ tipo →
           }
         } else {
           let cat = self.match_token_category(e.clone());
-          if self.acceptable_categories.iter().find(|&&x| x==cat) == None {
+          if !self.acceptable_categories.contains(&cat) {
             panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
           }
         }   
       }
     } else if self.acceptable_categories[0] == Category::Boolean {
-      // TODO
+   
+      let mut type_stack: Vec<Symbol> = Vec::new();
+      let mut op_stack: Vec<Symbol> = Vec::new();
+      let mut flag_next = false;
+      let mut flag_operation = false;
+
+      for e in self.expression.iter() {
+
+        //(
+        if e.token == Token::LParentheses && !op_stack.is_empty(){
+          flag_next = true;
+        }
+
+        // )
+        if e.token == Token::RParentheses {
+          if !op_stack.is_empty() {
+          
+            let mut op1 = type_stack.pop().unwrap();
+            let mut op2 = type_stack.pop().unwrap();
+            let mut operator = op_stack.pop().unwrap();
+
+            if operator.category == Type::RelOperator {
+              type_stack.push(Symbol{
+                token : Token::True,
+                category : Type::BoolLiteral,
+                line : 0
+              });
+            } else {
+              if op1.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}`", Category::Real, Type::BoolLiteral);
+              }
+              if op2.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}`", Category::Real, Type::BoolLiteral);
+              }
+              type_stack.push(op1.clone());
+            }
+
+          }
+        }
+
+        //literals
+        if e.category == Type::IntLiteral || e.category == Type::RealLiteral || e.category == Type::BoolLiteral{
+          
+          if flag_next || !flag_operation {
+            type_stack.push(e.clone());
+          } else {
+
+            let mut op1 = type_stack.pop().unwrap();
+            let mut operator = op_stack.pop().unwrap();
+            
+            if operator.category == Type::RelOperator  {
+              
+              type_stack.push(Symbol{
+                token : Token::True,
+                category : Type::BoolLiteral,
+                line : 0
+              });
+
+            } else {
+              if op1.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", Category::Real, Type::BoolLiteral, op1.line);
+              }
+              if e.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", Category::Real, Type::BoolLiteral, e.line);
+              }
+
+              type_stack.push(op1.clone());
+              flag_operation = false;
+            }
+          }
+        }
+
+        //identifier
+        if e.category == Type::Identifier {
+          //test before push
+          let mut string = match e.token {
+            Token::LitStr(ref s) => s.to_string(),
+            _ => unimplemented!()
+          };
+
+          let mut category = self.search_stack(&string);
+          
+          match category {
+            Category::Procedure | Category::Program | Category::Sentinel | Category::Undefined =>
+              panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", self.acceptable_categories[0], category, e.line),
+            _=> continue
+          };
+          
+          if flag_next || !flag_operation {
+            type_stack.push(e.clone());
+          } else {
+
+            let mut op1 = type_stack.pop().unwrap();
+            let mut operator = op_stack.pop().unwrap();
+            
+            if operator.category == Type::RelOperator {
+              
+              type_stack.push(Symbol{
+                token : Token::True,
+                category : Type::BoolLiteral,
+                line : 0
+              });
+
+            } else {
+              if op1.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", Category::Real, Type::BoolLiteral, op1.line);
+              }
+              if e.category == Type::BoolLiteral {
+                panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", Category::Real, Type::BoolLiteral, e.line);
+              }
+
+              type_stack.push(op1.clone());
+            }
+          }
+          
+        }
+
+        //operator
+        if e.category == Type::AddOperator || e.category == Type::MulOperator || e.category == Type::RelOperator{
+          op_stack.push(e.clone());
+          flag_operation = true;
+
+          if flag_next {
+            flag_next = false;
+          }
+        
+        }
+      
+
+      } //end of loop
+      
+      let cat = self.match_token_category(type_stack[0].clone());
+      if !self.acceptable_categories.contains(&cat) {
+           panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+      } 
+
     }
+
     self.expression.clear();
   }
 
@@ -652,6 +788,16 @@ tipo →
   }
 }
 
+
+#[test]
+fn test_expr_boolean(){
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program16.txt");
+  for ex in p1.expression.iter() {
+    println!("{:?}", ex);
+  }
+  assert!(res);
+}
 
 #[test]
 fn test_expr(){

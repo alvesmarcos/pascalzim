@@ -17,7 +17,5 @@ var a, b: integer;
     c := 4;
   end;
 begin
-p(2+3);
-q(5.4);
  a := b;
 end.

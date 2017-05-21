@@ -623,6 +623,8 @@ tipo →
             Token::Not | Token::And | Token::Or =>  panic!("Type `{:?}` doesn't support operator logical `{}` => line {}", self.acceptable_categories[0], e.token, e.line),
             _ => continue
           }
+        } else if e.token == Token::LParentheses || e.token == Token::RParentheses {
+          continue;
         } else {
           let cat = self.match_token_category(e.clone());
           if !self.acceptable_categories.contains(&cat) {

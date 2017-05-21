@@ -1,1 +1,0 @@
-colocar true e false como palavras reservadas

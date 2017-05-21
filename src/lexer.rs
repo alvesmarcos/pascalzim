@@ -5,7 +5,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 use spec::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Symbol {
   pub token: Token,
   pub category: Type,

@@ -2,14 +2,15 @@ use lexer::*;
 use spec::*;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Category {
   Integer,
   Real,
   Boolean,
   Procedure,
   Program,
-  Sentinel
+  Sentinel,
+  Undefined
 }
 
 #[derive(Debug)]
@@ -21,12 +22,28 @@ pub struct Identifier {
 pub struct Parser {
   scanner: Scanner,
   symbol: Symbol,
-  stack: Vec<Identifier>
-} 
+  stack: Vec<Identifier>,
+  // temporary buffer to store identifiers before pushing to stack
+  // used to bind the types
+  identifiers_buffer: Vec<Identifier>,
+  // temporary buffer to store the acceptable types of a category 
+  acceptable_categories: Vec<Category>,
+  expression : Vec<Symbol>
+  } 
 
 impl Parser {
   pub fn new() -> Parser {
-    Parser { scanner: Scanner::new(), symbol: Symbol { token: Token::Empty, category: Type::Eof, line: 0 }, stack: Vec::new() }
+    Parser { 
+      scanner: Scanner::new(), 
+      stack: Vec::new(),
+      acceptable_categories: Vec::new(),
+      identifiers_buffer: Vec::new(), 
+      expression : Vec::new(),
+      symbol: Symbol { 
+        token: Token::Empty, 
+        category: Type::Eof, 
+        line: 0 } 
+      }
   }
   pub fn build_ast(&mut self, p: &str) -> bool {
     self.scanner.build_token(p);
@@ -153,12 +170,14 @@ lista_declarações_variáveis →
                 Token::LitStr(ref s) => s.to_string(),
                 _ => unimplemented!() };
       if !self.search_scope(&name) {
+        
         // pushing
-        self.stack.push(
+        self.identifiers_buffer.push(
           Identifier {
             name: name, 
-            category: Category::Integer
+            category: Category::Undefined
           });
+        
         self.set_next_symbol();  
       } else {
         panic!("Identifier `{}` already declared", name);
@@ -207,8 +226,9 @@ tipo →
 
     //integer | real | boolean
     if self.symbol.token == Token::Integer || self.symbol.token == Token::Real || self.symbol.token == Token::Boolean {
-      /**VAI FICAR AQUI*/
       
+      self.bind_type_and_erase();
+
       self.set_next_symbol();
     } else {
       panic!("Expected type `boolean` or `integer` or `real`  found `{}` => line {}", self.symbol.token, self.symbol.line); 
@@ -342,15 +362,24 @@ tipo →
 
   fn parse_command(&mut self, ep_closure: bool) {
     if self.symbol.category == Type::Identifier {
+      
       let name: String = match self.symbol.token {
                               Token::LitStr(ref s) => s.to_string(),
-                              _ => unimplemented!() };
-      if  self.search_stack(&name) {
+                              _ => unimplemented!() 
+                              };
+
+      let category = self.search_stack(&name); 
+
+      if  category != Category::Undefined {
+        
+        self.acceptable_types(category); //refresh the acceptable_categories vector
         self.set_next_symbol();
         
         if self.symbol.token == Token::Assign {
           self.set_next_symbol();
           self.parse_expr();
+
+
         } else {
           self.parse_active_procedure();
         }
@@ -390,10 +419,12 @@ tipo →
 
   fn parse_active_procedure(&mut self) {
     if self.symbol.token == Token::LParentheses {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_list_expr();
 
       if self.symbol.token == Token::RParentheses {
+        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       } else {
         panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -415,6 +446,7 @@ tipo →
 
   fn parse_list_expr_recursive(&mut self) {
     if self.symbol.token == Token::Comma {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
       self.parse_list_expr_recursive();
@@ -422,16 +454,20 @@ tipo →
   }
 
   fn parse_expr(&mut self) {
+    
     self.parse_simple_expr();
 
     if self.symbol.category == Type::RelOperator {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol(); 
       self.parse_simple_expr();
     }
+
   }
 
   fn parse_simple_expr(&mut self) {
     if self.symbol.token == Token::Add || self.symbol.token == Token::Sub {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_term();
       self.parse_simple_expr_recursive();
@@ -443,6 +479,7 @@ tipo →
 
   fn parse_simple_expr_recursive(&mut self) {
     if self.symbol.category == Type::AddOperator {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_term();
       self.parse_simple_expr_recursive();
@@ -456,6 +493,7 @@ tipo →
 
   fn parse_term_recursive(&mut self) {
     if self.symbol.category == Type::MulOperator {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_factor();
       self.parse_term_recursive();
@@ -464,10 +502,12 @@ tipo →
 
   fn parse_factor(&mut self) {
     if self.symbol.category == Type::Identifier {
+       self.expression.push(self.symbol.clone());
        let name: String = match self.symbol.token {
                               Token::LitStr(ref s) => s.to_string(),
                               _ => unimplemented!() };
-      if self.search_stack(&name) {
+                            
+      if self.search_stack(&name) != Category::Undefined {
         self.set_next_symbol();
       } else {
         panic!("Identifier `{}` not declared => line {}", name, self.symbol.line);
@@ -475,20 +515,49 @@ tipo →
       self.parse_active_procedure();
 
     } else if self.symbol.token == Token::LParentheses {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
 
       if self.symbol.token == Token::RParentheses {
+        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
               self.symbol.token == Token::True || self.symbol.token == Token::False ||
               self.symbol.token == Token::Not {
+      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
     } else {
       panic!("Expected Factor `id` or `real` or `integer` or `true` or false` or `(` or `not` found `{}` => line {}",
              self.symbol.token, self.symbol.line)
     }   
+  }
+
+  fn bind_type_and_erase(&mut self){
+
+    let cat: Category = match self.symbol.token {
+                              Token::Integer => Category::Integer,
+                              Token::Real => Category::Real,
+                              Token::Boolean => Category::Boolean,
+                              _ => unimplemented!() };
+    
+    while !self.identifiers_buffer.is_empty() {
+      let mut tmp = self.identifiers_buffer.pop().unwrap();
+      tmp.category = cat;
+      self.stack.push(tmp);
+    }
+
+  }
+
+  fn acceptable_types(&mut self, category: Category){
+    self.acceptable_categories = match category {
+      Category::Integer => vec![Category::Integer, Category::Real],
+      Category::Real => vec![Category::Real, Category::Integer],
+      Category::Boolean => vec![Category::Boolean],
+      Category::Procedure => vec![Category::Undefined],
+      _ => unimplemented!()
+    }
   }
 
   fn search_scope(&self, id: &String) -> bool {
@@ -505,15 +574,15 @@ tipo →
     false
   }
 
-  fn search_stack(&self, id: &String) -> bool {
+  fn search_stack(&self, id: &String) -> Category {
     let len = self.stack.len();
 
     for x in (0..len).rev() {
       if self.stack[x].name == *id {
-        return true;
+        return self.stack[x].category;
       } 
     }
-    false
+    Category::Undefined
   }
 
 
@@ -534,6 +603,17 @@ tipo →
   fn set_next_symbol(&mut self) {
     self.symbol = self.scanner.next_symbol();
   }
+}
+
+
+#[test]
+fn test_expr(){
+  let mut p1: Parser = Parser::new();
+  let res = p1.build_ast("files/program10.txt");
+  for ex in p1.expression.iter() {
+    println!("{:?}", ex);
+  }
+  assert!(false);
 }
 
 

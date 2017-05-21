@@ -101,7 +101,7 @@ impl fmt::Display for Token {
 
 
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Type {
   Keyword,
   Identifier,

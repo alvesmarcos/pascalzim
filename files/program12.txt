@@ -4,7 +4,7 @@ var
    result   : integer;
 begin  {tente gerar um erro usando um caracter n‹o permitido.. tipo $}
    num := 3 * 5;
-   if (num >= 20) and (num <=90) then
+   if ((num >= 20) > 3) > (num <=90) then
       num := 10
    else
       num := 0;

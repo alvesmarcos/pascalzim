@@ -3,9 +3,10 @@ var
    num  : integer;
    result   : integer;
    procedure p; { erro aqui falta ';'}
-    var b, c: boolean;
+    var b, c, d: boolean;
+
     begin
-      c := 2.3;
+      c := 2.3 + d;
     end;
 begin  {tente gerar um erro usando um caracter n‹o permitido.. tipo $}
    num := 3 * 5;

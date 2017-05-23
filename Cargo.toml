@@ -1,4 +1,4 @@
 [package]
 name = "pascalzim"
 version = "0.0.1"
-authors = ["Marcos Alves <marcos.alves@cc.ci.ufpb.br>"]
+authors = ["Marcos Alves <marcos.alves@cc.ci.ufpb.br>", "Higor Anjos <higor.araujo@cc.ci.ufpb.br>"]

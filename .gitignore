@@ -1,2 +1,5 @@
 target/
 
+src/pascalzim
+
+src/*.rlib

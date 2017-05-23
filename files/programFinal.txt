@@ -1,0 +1,8 @@
+program teste; {programa exemplo}
+var
+  z: boolean;
+  x: boolean;
+  x: boolean;
+begin
+  z := x -> x;
+end.

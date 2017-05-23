@@ -5,13 +5,12 @@ var a, b: integer;
   begin
     b := x + x;
   end;
-
   procedure q;
   var c, d: integer;
-    procedure r(y: real);
+    procedure r(y: real; x:integer);
       var e, f: integer;
       begin
-        a := y;
+        a := (x+x);
       end;
   begin
     c := 4;

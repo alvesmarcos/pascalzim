@@ -41,6 +41,7 @@ pub enum Token {
   Mult,
   Div,
   Power,
+  Imp,
   // literal
   LitInt(i32),
   LitReal(f32),
@@ -51,6 +52,7 @@ pub enum Token {
 impl fmt::Display for Token {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let result = match *self {
+      Token::Imp => "->".to_string(),
       Token::Program => "program".to_string(),
       Token::Var => "var".to_string(),
       Token::Integer => "integer".to_string(),

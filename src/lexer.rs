@@ -57,7 +57,14 @@ impl Scanner {
   fn operators(&self, c: char, iter:&mut Peekable<Chars>) -> (Token, Type) {
     match c {
       '+' => (Token::Add, Type::AddOperator),
-      '-' => (Token::Sub, Type::AddOperator),
+      '-' => {
+        if iter.peek() == Some(&'>') {
+          iter.next();
+          (Token::Imp, Type::RelOperator)  
+        } else {
+          (Token::Sub, Type::AddOperator)
+        }
+      },
       '/' => (Token::Div, Type::MulOperator),
       '^' => (Token::Power, Type::MulOperator),
       '*' => {

@@ -3,6 +3,14 @@ pascalzim
 
 Versão simplificada do compilador pascalzim escrito em rust
 
+### Instalando Rust
+
+Para instalar o Rust, rode o seguinte comando no terminal e siga as instruções na tela:
+
+```console
+curl https://sh.rustup.rs -sSf | sh
+```
+
 ### Testando
 
 Navegue até a pasta `src` e no terminal, digite: 

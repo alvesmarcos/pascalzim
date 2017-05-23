@@ -1,10 +1,10 @@
 program Test3; {programa para teste do lexico}
 var
-   num  : integer;
+   num  : boolean;
    result   : integer;
 begin  {tente gerar um erro usando um caracter n‹o permitido.. tipo $}
-   num := 3 * 5;
-   if ((num >= 20) > 3) > (num <=90) then
+   num := 3 > (3 < 2);
+   if 3 >= 20 or (num > 2) then
       num := 10
    else
       num := 0;

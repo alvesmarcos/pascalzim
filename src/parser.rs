@@ -563,11 +563,10 @@ tipo →
 
   fn acceptable_types(&mut self, category: Category){
     self.acceptable_categories = match category {
-      Category::Integer => vec![Category::Integer, Category::Real],
+      Category::Integer => vec![Category::Integer],
       Category::Real => vec![Category::Real, Category::Integer],
       Category::Boolean => vec![Category::Boolean],
-      Category::Procedure | Category::Program => vec![Category::Undefined],
-      _ => unimplemented!()
+      _ => vec![Category::Undefined]
     };
   }
 
@@ -577,7 +576,7 @@ tipo →
     if self.is_program_or_procedure(id) {
       panic!("You can't define variables with name of the program or procedure `{}`=> line {}", self.symbol.token, self.symbol.line);
     }
-    
+
     for e in self.identifiers_buffer.iter() {
       if e.name == *id { return true; }
     }
@@ -593,8 +592,6 @@ tipo →
   }
 
   fn is_program_or_procedure(&self, id: &String) -> bool {  
-    let len = self.stack.len();
-    
     for e in self.identifiers_buffer.iter() {
       if e.name == *id && (e.category == Category::Program || e.category == Category::Procedure) {
         return true;
@@ -637,10 +634,10 @@ tipo →
     // atomic expression
     if self.expression.len() == 1 {
       let syml = self.expression.pop().unwrap();
-      let cat = self.match_token_category(syml);
+      let cat = self.match_token_category(syml.clone());
       
       if !self.acceptable_categories.contains(&cat) {
-        panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+        panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", self.acceptable_categories[0], cat, syml.line);
       }
     } else if self.acceptable_categories[0] == Category::Integer || self.acceptable_categories[0] == Category::Real {
       for e in self.expression.iter() {
@@ -656,12 +653,42 @@ tipo →
         } else {
           let cat = self.match_token_category(e.clone());
           if !self.acceptable_categories.contains(&cat) {
-            panic!("Mismatched types expected `{:?}` found `{:?}`", self.acceptable_categories[0], cat);
+            panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", self.acceptable_categories[0], cat, e.line);
           }
         }   
       }
     } else if self.acceptable_categories[0] == Category::Boolean {
-      // TODO
+      let mut pct: Vec<Category> = Vec::new();
+      let mut as1: Category = Category::Undefined;
+
+      while !self.expression.is_empty() {
+        let mut op = self.expression.pop().unwrap();
+        
+        if op.category == Type::RelOperator {
+          if let Some(e) = self.expression.pop() {
+            let mut res = self.match_token_category(e.clone());
+            self.acceptable_types(as1);
+            if !self.acceptable_categories.contains(&res) {
+              panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", self.acceptable_categories[0], res, op.line);
+            }
+            as1 = match op.token {
+              Token::Equal | Token::NotEqual => Category::Undefined,
+              _ => {
+                if as1 == Category::Boolean || res == Category::Boolean {
+                   panic!("Type `{:?}` doesn't support operator relational `{}` => line {}", as1, op.token, op.line)
+                } else {
+                  Category::Undefined
+                }
+              } 
+            };
+            pct.push(Category::Boolean);
+          } else {
+             panic!("Operator relational is binary => line {}", self.symbol.line);
+          }
+        } else if op.category == Type::BoolLiteral || op.category == Type::Identifier || op.category == Type::IntLiteral || op.category == Type::RealLiteral {
+          as1 = self.match_token_category(op);
+        }
+      }
     }
     self.expression.clear();
   }
@@ -672,7 +699,7 @@ tipo →
       Token::True | Token::False => Category::Boolean,
       Token::LitReal(_) => Category::Real,
       Token::LitInt(_) => Category::Integer,
-      _ => unimplemented!() 
+      _ => Category::Undefined 
     }
   } 
 

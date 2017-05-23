@@ -28,7 +28,7 @@ pub struct Parser {
   identifiers_buffer: Vec<Identifier>,
   // temporary buffer to store the acceptable types of a category 
   acceptable_categories: Vec<Category>,
-  expression : Vec<Symbol>
+  types_stack : Vec<Category>
 } 
 
 impl Parser {
@@ -38,7 +38,7 @@ impl Parser {
       stack: Vec::new(),
       acceptable_categories: Vec::new(),
       identifiers_buffer: Vec::new(), 
-      expression : Vec::new(),
+      types_stack : Vec::new(),
       symbol: Symbol { 
         token: Token::Empty, 
         category: Type::Eof, 
@@ -206,7 +206,7 @@ lista_de_identificadores' →
 
         if !self.search_scope(&name) {
           // pushing
-          self.stack.push(
+          self.identifiers_buffer.push(
             Identifier {
               name: match self.symbol.token {
                 Token::LitStr(ref s) => s.to_string(),
@@ -383,10 +383,14 @@ tipo →
         self.set_next_symbol();
         
         if self.symbol.token == Token::Assign {
+          let mut saved_line = self.symbol.line;
           self.set_next_symbol();
           self.parse_expr();
-          
-          self.evaluate_expr();
+          let mut exp_result : Category = self.types_stack.pop().unwrap(); 
+          if !self.acceptable_categories.contains(&exp_result){
+
+              panic!("Mismatched types expected `{:?}` found `{:?}` => line {}", self.acceptable_categories[0], exp_result, saved_line);
+          }
         } else {
           self.parse_active_procedure();
         }
@@ -401,7 +405,7 @@ tipo →
       self.parse_expr();
       
       self.acceptable_types(Category::Boolean);
-      self.evaluate_expr();
+
 
       if self.symbol.token == Token::Then {
         self.set_next_symbol();
@@ -416,7 +420,6 @@ tipo →
       self.parse_expr();
 
       self.acceptable_types(Category::Boolean);
-      self.evaluate_expr();
 
       if self.symbol.token == Token::Do {
         self.set_next_symbol();
@@ -432,12 +435,10 @@ tipo →
 
   fn parse_active_procedure(&mut self) {
     if self.symbol.token == Token::LParentheses {
-      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_list_expr();
 
       if self.symbol.token == Token::RParentheses {
-        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       } else {
         panic!("Expected delimiter `)`  found `{}` => line {}", self.symbol.token, self.symbol.line);
@@ -459,7 +460,6 @@ tipo →
 
   fn parse_list_expr_recursive(&mut self) {
     if self.symbol.token == Token::Comma {
-      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
       self.parse_list_expr_recursive();
@@ -470,15 +470,38 @@ tipo →
     self.parse_simple_expr();
 
     if self.symbol.category == Type::RelOperator {
-      self.expression.push(self.symbol.clone());
+      let mut saved_operator = self.symbol.clone();
       self.set_next_symbol(); 
       self.parse_simple_expr();
+      let mut op1 = self.types_stack.pop().unwrap();
+      let mut op2 = self.types_stack.pop().unwrap();
+
+      if saved_operator.token == Token::Equal || saved_operator.token == Token::NotEqual {
+        
+        if op1 != op2 {
+            panic!("Mismatched types `{:?}` is different from `{:?}` for `{}` => line {}", op1, op2, saved_operator.token, saved_operator.line);    
+        }
+
+      } else {
+
+        if op1 != Category::Real && op1 != Category::Integer {  
+          panic!("Type `{:?}` doesn't support relational operator `{}` => line {}", op1, saved_operator.token, saved_operator.line)
+        }
+
+        if op2 != Category::Real && op2 != Category::Integer {  
+          panic!("Type `{:?}` doesn't support relational operator `{}` => line {}", op2, saved_operator.token, saved_operator.line)
+        }
+
+
+      }
+
+      self.types_stack.push(Category::Boolean);
+
     }
   }
 
   fn parse_simple_expr(&mut self) {
     if self.symbol.token == Token::Add || self.symbol.token == Token::Sub {
-      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_term();
       self.parse_simple_expr_recursive();
@@ -490,9 +513,29 @@ tipo →
 
   fn parse_simple_expr_recursive(&mut self) {
     if self.symbol.category == Type::AddOperator {
-      self.expression.push(self.symbol.clone());
+      let mut saved_operator = self.symbol.clone();
       self.set_next_symbol();
       self.parse_term();
+
+      let mut op1 = self.types_stack.pop().unwrap();
+      let mut op2 = self.types_stack.pop().unwrap();
+
+      if saved_operator.token == Token::Add || saved_operator.token == Token::Sub {
+        if op1 == Category::Integer && op2 == Category::Integer {
+          self.types_stack.push(Category::Integer);
+        } else if op1 == Category::Boolean || op2 == Category::Boolean {
+          panic!("Type `{:?}` doesn't support arithmetic operator `{}` => line {}", Category::Boolean, saved_operator.token, saved_operator.line);
+        } else {
+          self.types_stack.push(Category::Real);
+        }
+      } else {
+        //or
+        if op1 != Category::Boolean || op2 != Category::Boolean {
+          panic!("Logic operator `{}` only supports Boolean operands => line {}", saved_operator.token, saved_operator.line);
+        }
+          self.types_stack.push(Category::Boolean);
+      }
+
       self.parse_simple_expr_recursive();
     }
   }
@@ -504,42 +547,72 @@ tipo →
 
   fn parse_term_recursive(&mut self) {
     if self.symbol.category == Type::MulOperator {
-      self.expression.push(self.symbol.clone());
+      let mut saved_operator = self.symbol.clone();
+
       self.set_next_symbol();
       self.parse_factor();
+
+      let mut op1 = self.types_stack.pop().unwrap();
+      let mut op2 = self.types_stack.pop().unwrap();
+
+      if saved_operator.token == Token::Mult || saved_operator.token == Token::Div {
+        if op1 == Category::Integer && op2 == Category::Integer {
+          self.types_stack.push(Category::Integer);
+        } else if op1 == Category::Boolean || op2 == Category::Boolean {
+          panic!("Type `{:?}` doesn't support arithmetic operator `{}` => line {}", Category::Boolean, saved_operator.token, saved_operator.line);
+        } else {
+          self.types_stack.push(Category::Real);
+        }
+      } else {
+        //and
+        if op1 != Category::Boolean || op2 != Category::Boolean {
+          panic!("Logic operator `{}` only supports Boolean operands => line {}", saved_operator.token, saved_operator.line);
+        }
+          self.types_stack.push(Category::Boolean);
+      }
+
       self.parse_term_recursive();
     }
   }
 
   fn parse_factor(&mut self) {
     if self.symbol.category == Type::Identifier {
-       self.expression.push(self.symbol.clone());
        let name: String = match self.symbol.token {
                               Token::LitStr(ref s) => s.to_string(),
                               _ => unimplemented!() };
-                            
+
+
       if self.search_stack(&name) != Category::Undefined {
+        //coloca o tipo na pilha
+        let mut cat = self.match_token_category(self.symbol.clone());
+        self.types_stack.push(cat);
         self.set_next_symbol();
       } else {
         panic!("Identifier `{}` not declared => line {}", name, self.symbol.line);
       }
+
+      
+
       self.parse_active_procedure();
 
     } else if self.symbol.token == Token::LParentheses {
-      self.expression.push(self.symbol.clone());
       self.set_next_symbol();
       self.parse_expr();
 
       if self.symbol.token == Token::RParentheses {
-        self.expression.push(self.symbol.clone());
         self.set_next_symbol();
       }
     } else if self.symbol.category == Type::RealLiteral || self.symbol.category == Type::IntLiteral || 
-              self.symbol.token == Token::True || self.symbol.token == Token::False ||
-              self.symbol.token == Token::Not {
-      self.expression.push(self.symbol.clone());
+              self.symbol.token == Token::True || self.symbol.token == Token::False {
+      //coloca o tipo na pilha
+      let mut cat = self.match_token_category(self.symbol.clone());
+      self.types_stack.push(cat);    
+      
       self.set_next_symbol();
-    } else {
+    } else if self.symbol.token == Token::Not {
+      self.set_next_symbol();
+      self.parse_factor();
+    } else{
       panic!("Expected Factor `id` or `real` or `integer` or `true` or false` or `(` or `not` found `{}` => line {}",
              self.symbol.token, self.symbol.line)
     }   
@@ -629,7 +702,7 @@ tipo →
       }
     }
   }
-
+/*
   fn evaluate_expr(&mut self) {
     // atomic expression
     if self.expression.len() == 1 {
@@ -692,7 +765,7 @@ tipo →
     }
     self.expression.clear();
   }
-
+*/
   fn match_token_category(&self, sym: Symbol) -> Category {
     match sym.token {
       Token::LitStr(ref s) => self.search_stack(s),
@@ -710,25 +783,6 @@ tipo →
 }
 
 
-#[test]
-fn test_expr_boolean(){
-  let mut p1: Parser = Parser::new();
-  let res = p1.build_ast("files/program16.txt");
-  for ex in p1.expression.iter() {
-    println!("{:?}", ex);
-  }
-  assert!(res);
-}
-
-#[test]
-fn test_expr(){
-  let mut p1: Parser = Parser::new();
-  let res = p1.build_ast("files/program6.txt");
-  for ex in p1.expression.iter() {
-    println!("{:?}", ex);
-  }
-  assert!(res);
-}
 
 
 #[test]
